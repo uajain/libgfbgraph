@@ -171,20 +171,33 @@ gfbgraph_goa_authorizer_process_call (GFBGraphAuthorizer *iface, RestProxyCall *
 void
 gfbgraph_goa_authorizer_process_message (GFBGraphAuthorizer *iface, SoupMessage *message)
 {
-        gchar *auth_value;
-        SoupURI *uri;
         GFBGraphGoaAuthorizerPrivate *priv;
+        SoupURI *uri;
+        gchar *auth_value = NULL;
 
         priv = GFBGRAPH_GOA_AUTHORIZER_GET_PRIVATE (GFBGRAPH_GOA_AUTHORIZER (iface));
 
         g_mutex_lock (&priv->mutex);
 
-        uri = soup_message_get_uri (message);
-        auth_value = g_strconcat ("access_token=", priv->access_token, NULL);
-        soup_uri_set_query (uri, auth_value);
+        if (priv->access_token == NULL)
+            goto out;
+
+        if (g_strcmp0 (message->method, "DELETE") == 0 || g_strcmp0 (message->method, "GET") == 0) {
+            uri = soup_message_get_uri (message);
+            auth_value = g_strconcat ("access_token=", priv->access_token, NULL);
+            soup_uri_set_query (uri, auth_value);
+        }
+
+        else if (g_strcmp0 (message->method, "POST") == 0) {
+            auth_value = g_strconcat ("Bearer ", priv->access_token, NULL);
+            soup_message_headers_append (message->request_headers, "Authorization", auth_value);
+        }
+
+        else
+            g_assert_not_reached ();
 
         g_free (auth_value);
-
+    out:
         g_mutex_unlock (&priv->mutex);
 }
 
