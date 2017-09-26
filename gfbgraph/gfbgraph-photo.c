@@ -41,6 +41,7 @@ enum {
 
         PROP_NAME,
         PROP_SOURCE,
+        PROP_MIME_TYPE,
         PROP_HEIGHT,
         PROP_WIDTH,
         PROP_IMAGES
@@ -49,6 +50,7 @@ enum {
 struct _GFBGraphPhotoPrivate {
         gchar              *name;
         gchar              *source;
+        gchar              *mime_type;
         guint               width;
         guint               height;
         GList              *images;
@@ -125,6 +127,18 @@ gfbgraph_photo_class_init (GFBGraphPhotoClass *klass)
                                                               G_PARAM_READABLE | G_PARAM_WRITABLE));
 
         /**
+         * GFBGraphPhoto:mime_type:
+         *
+         * The MIME type of the photo.
+         **/
+        g_object_class_install_property (gobject_class,
+                                         PROP_MIME_TYPE,
+                                         g_param_spec_string ("mime_type",
+                                                              "The MIME type", "The MIME type of the photo",
+                                                              "",
+                                                              G_PARAM_READABLE | G_PARAM_WRITABLE));
+
+        /**
          * GFBGraphPhoto:width:
          *
          * The default photo width, up to 720px.
@@ -181,6 +195,7 @@ gfbgraph_photo_finalize (GObject *obj)
 
         g_free (priv->name);
         g_free (priv->source);
+        g_free (priv->mime_type);
         g_list_free (priv->images);
 
         G_OBJECT_CLASS(parent_class)->finalize (obj);
@@ -203,6 +218,11 @@ gfbgraph_photo_set_property (GObject *object, guint prop_id, const GValue *value
                         if (priv->source)
                                 g_free (priv->source);
                         priv->source = g_strdup (g_value_get_string (value));
+                        break;
+                case PROP_MIME_TYPE:
+                        if (priv->mime_type)
+                                g_free (priv->mime_type);
+                        priv->mime_type = g_strdup (g_value_get_string (value));
                         break;
                 case PROP_WIDTH:
                         priv->width = g_value_get_uint (value);
@@ -233,6 +253,9 @@ gfbgraph_photo_get_property (GObject *object, guint prop_id, GValue *value, GPar
                         break;
                 case PROP_SOURCE:
                         g_value_set_string (value, priv->source);
+                        break;
+                case PROP_MIME_TYPE:
+                        g_value_set_string (value, priv->mime_type);
                         break;
                 case PROP_WIDTH:
                         g_value_set_uint (value, priv->width);
@@ -376,7 +399,20 @@ gfbgraph_photo_serializable_get_property (JsonSerializable *serializable, GParam
 GFBGraphPhoto*
 gfbgraph_photo_new (void)
 {
-        return GFBGRAPH_PHOTO(g_object_new(GFBGRAPH_TYPE_PHOTO, NULL));
+        return GFBGRAPH_PHOTO (g_object_new (GFBGRAPH_TYPE_PHOTO, NULL));
+}
+
+/**
+ * gfbgraph_photo_new_from_file_source:
+ *
+ * Creates a new #GFBGraphPhoto from file of MIME type.
+ *
+ * Returns: (transfer full): a new #GFBGraphPhoto from file source; unref with g_object_unref()
+ **/
+GFBGraphPhoto*
+gfbgraph_photo_new_from_file_source (const gchar *source, gchar *mime_type)
+{
+        return GFBGRAPH_PHOTO (g_object_new (GFBGRAPH_TYPE_PHOTO, "source", source, "mime_type", mime_type, NULL));
 }
 
 /**
@@ -602,4 +638,70 @@ gfbgraph_photo_get_image_near_height (GFBGraphPhoto *photo, guint height)
         }
 
         return photo_image;
+}
+
+gint
+gfbgraph_photo_upload_photo (GFBGraphPhoto *self, GFBGraphAuthorizer *authorizer)
+{
+    GFBGraphPhotoPrivate *priv;
+    SoupBuffer *buffer = NULL;
+    SoupMessage *message = NULL;
+    SoupMultipart *multipart = NULL;
+    SoupSession *session = NULL;
+    GError *error = NULL;
+    GFile *file;
+    GMappedFile *mapped_file;
+    gchar *basename = NULL;
+    gchar *contents = NULL;
+    gchar *file_path = NULL;
+    gchar *url = NULL;
+    gsize length;
+    gint status = 1;
+
+    priv = GFBGRAPH_PHOTO_GET_PRIVATE (self);
+
+    url = g_strconcat ("https://graph.facebook.com/v2.3/me/photos", NULL);
+    /* TODO: Use FACEBOOK_ENDPOINT here
+     * node_id is {user-id}(me) for now
+     * node_id can also be {album-id} in future for album uploads
+     */
+
+    file = g_file_new_for_uri (priv->source);
+    file_path = g_file_get_path (file);
+    basename = g_file_get_basename (file);
+
+    mapped_file = g_mapped_file_new (file_path, FALSE, &error);
+    if (error != NULL) {
+        g_warning ("Error in file loading: %s", error->message);
+        g_error_free (error);
+        goto out;
+    }
+
+    session = soup_session_new ();
+
+    contents = g_mapped_file_get_contents (mapped_file);
+    length = g_mapped_file_get_length (mapped_file);
+    buffer = soup_buffer_new (SOUP_MEMORY_STATIC, contents, length);
+
+    multipart = soup_multipart_new (SOUP_FORM_MIME_TYPE_MULTIPART);
+    soup_multipart_append_form_file (multipart, "file", basename, "image/jpeg", buffer);
+    /*TODO: Add other form controls by append_form_string*/
+    message = soup_form_request_new_from_multipart(url, multipart);
+    gfbgraph_authorizer_process_message (GFBGRAPH_AUTHORIZER (authorizer), message);
+
+    status = soup_session_send_message (session, message);
+
+    soup_multipart_free (multipart);
+    soup_buffer_free (buffer);
+    g_clear_object (&message);
+    g_clear_object (&session);
+    g_mapped_file_unref (mapped_file);
+
+  out:
+    g_object_unref (file);
+    g_free (basename);
+    g_free (file_path);
+    g_free (url);
+
+    return status;
 }

@@ -22,6 +22,7 @@
 
 #include <gio/gio.h>
 #include <gfbgraph/gfbgraph-node.h>
+#include "gfbgraph/gfbgraph-authorizer.h"
 
 G_BEGIN_DECLS
 
@@ -62,6 +63,7 @@ struct _GFBGraphPhotoImage {
 
 GType          gfbgraph_photo_get_type (void) G_GNUC_CONST;
 GFBGraphPhoto* gfbgraph_photo_new      (void);
+GFBGraphPhoto* gfbgraph_photo_new_from_file_source (const gchar *source, gchar *mime_type);
 GFBGraphPhoto* gfbgraph_photo_new_from_id (GFBGraphAuthorizer *authorizer, const gchar *id, GError **error);
 GInputStream*  gfbgraph_photo_download_default_size (GFBGraphPhoto *photo, GFBGraphAuthorizer *authorizer, GError **error);
 
@@ -74,6 +76,7 @@ const GFBGraphPhotoImage* gfbgraph_photo_get_image_hires        (GFBGraphPhoto *
 const GFBGraphPhotoImage* gfbgraph_photo_get_image_near_width   (GFBGraphPhoto *photo, guint width);
 const GFBGraphPhotoImage* gfbgraph_photo_get_image_near_height  (GFBGraphPhoto *photo, guint height);
 
+gint gfbgraph_photo_upload_photo (GFBGraphPhoto *upload_photo, GFBGraphAuthorizer *authorizer);
 G_END_DECLS
 
 #endif /* __GFBGRAPH_PHOTO_H__ */
