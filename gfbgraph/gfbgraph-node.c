@@ -46,7 +46,8 @@ enum
         PROP_ID,
         PROP_LINK,
         PROP_CREATEDTIME,
-        PROP_UPDATEDTIME
+        PROP_UPDATEDTIME,
+        PROP_MULTIPART_UPLOAD
 };
 
 struct _GFBGraphNodePrivate {
@@ -55,6 +56,7 @@ struct _GFBGraphNodePrivate {
         gchar *link;
         gchar *created_time;
         gchar *updated_time;
+        gboolean multipart_upload;
 };
 
 typedef struct {
@@ -144,6 +146,13 @@ gfbgraph_node_class_init (GFBGraphNodeClass *klass)
                                                               "The node updated time", "An ISO 8601 encoded date when the node was updated",
                                                               "",
                                                               G_PARAM_READABLE | G_PARAM_WRITABLE));
+
+        g_object_class_install_property (gobject_class,
+                                         PROP_MULTIPART_UPLOAD,
+                                         g_param_spec_boolean ("multipart_upload",
+                                                               "multipart/form-data", "multipart form data to be uploaded",
+                                                               FALSE,
+                                                               G_PARAM_CONSTRUCT | G_PARAM_READWRITE));
 }
 
 static void
@@ -197,6 +206,9 @@ gfbgraph_node_set_property (GObject *object, guint prop_id, const GValue *value,
                                 g_free (priv->updated_time);
                         priv->updated_time = g_strdup (g_value_get_string (value));
                         break;
+                case PROP_MULTIPART_UPLOAD:
+                        priv->multipart_upload = g_value_get_boolean (value);
+                        break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -222,6 +234,9 @@ gfbgraph_node_get_property (GObject *object, guint prop_id, GValue *value, GPara
                         break;
                 case PROP_UPDATEDTIME:
                         g_value_set_string (value, priv->updated_time);
+                        break;
+                case PROP_MULTIPART_UPLOAD:
+                        g_value_set_boolean (value, priv->multipart_upload);
                         break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
