@@ -266,8 +266,16 @@ gfbgraph_photo_get_connection_post_params (GFBGraphConnectable *self, GType node
 {
         GHashTable *params;
         GFBGraphPhotoPrivate *priv;
+        gboolean multipart_upload = FALSE;
 
         priv = GFBGRAPH_PHOTO_GET_PRIVATE (self);
+
+        /* Check if priv->source represents a file to be uploaded */
+        g_object_get (GFBGRAPH_NODE (self), "multipart_upload", &multipart_upload, NULL);
+        if (priv->source && multipart_upload)
+          {
+            g_print ("passing checks to denote a file upload\n");
+          }
 
         params = g_hash_table_new (g_str_hash, g_str_equal);
         g_hash_table_insert (params, "message", priv->name);
@@ -378,6 +386,20 @@ gfbgraph_photo_new (void)
 {
         return GFBGRAPH_PHOTO(g_object_new(GFBGRAPH_TYPE_PHOTO, NULL));
 }
+
+ /**
+ * gfbgraph_photo_new_from_file_source:
+ * @source: a #GFile uri.
+ * Creates a new #GFBGraphPhoto from #GFile uri which is meant to be uploaded.
+ *
+ * Returns: (transfer full): a new #GFBGraphPhoto from file source; unref with g_object_unref()
+ **/
+GFBGraphPhoto*
+gfbgraph_photo_new_from_file_source (const gchar *source)
+{
+        return GFBGRAPH_PHOTO (g_object_new (GFBGRAPH_TYPE_PHOTO, "source", source, "multipart_upload", TRUE, NULL));
+}
+
 
 /**
  * gfbgraph_photo_new_from_id:
