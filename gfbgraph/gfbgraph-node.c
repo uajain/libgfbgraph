@@ -563,7 +563,9 @@ gfbgraph_node_append_connection (GFBGraphNode *node, GFBGraphNode *connect_node,
         GFBGraphNodePrivate *priv;
         RestProxyCall *rest_call;
         GHashTable *params;
+        const gchar *upload_file_uri;
         gchar *function_path;
+        gboolean multipart_upload = FALSE;
         gboolean success;
 
         g_return_val_if_fail (GFBGRAPH_IS_NODE (node), FALSE);
@@ -587,6 +589,27 @@ gfbgraph_node_append_connection (GFBGraphNode *node, GFBGraphNode *connect_node,
         priv = GFBGRAPH_NODE_GET_PRIVATE (node);
 
         success = FALSE;
+
+        params = gfbgraph_connectable_get_connection_post_params (GFBGRAPH_CONNECTABLE (connect_node), G_OBJECT_TYPE (node));
+
+        g_object_get (connect_node, "multipart_upload", &multipart_upload, NULL);
+
+        /* Check if params contains a file to be uploaded */
+        if (g_hash_table_lookup_extended (params, "file", NULL, &upload_file_uri) && multipart_upload) {
+                GFile *file = g_file_new_for_uri (upload_file_uri);
+
+                if (gfbgraph_upload_file_exists_and_mime_type_check (file))  {
+                      guint status = 0;
+
+                      g_hash_table_remove (params, "file");
+                      status = gfbgraph_new_multipart_upload_soup_call (authorizer, g_object_ref (file), params);
+                      if (status == 200)
+                              success = TRUE;
+                }
+                g_clear_pointer (&file, g_object_unref);
+        }
+
+        else {
         rest_call = gfbgraph_new_rest_call (authorizer);
         rest_proxy_call_set_method (rest_call, "POST");
         function_path = g_strdup_printf ("%s/%s",
@@ -596,7 +619,6 @@ gfbgraph_node_append_connection (GFBGraphNode *node, GFBGraphNode *connect_node,
         rest_proxy_call_set_function (rest_call, function_path);
         g_free (function_path);
 
-        params = gfbgraph_connectable_get_connection_post_params (GFBGRAPH_CONNECTABLE (connect_node), G_OBJECT_TYPE (node));
         if (g_hash_table_size (params) > 0) {
                 GHashTableIter iter;
                 const gchar *key;
@@ -631,6 +653,7 @@ gfbgraph_node_append_connection (GFBGraphNode *node, GFBGraphNode *connect_node,
                 success = TRUE;
         }
         g_object_unref (rest_call);
+        }
 
         return success;
 }
