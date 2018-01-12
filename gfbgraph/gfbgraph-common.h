@@ -24,5 +24,8 @@
 #include <gfbgraph/gfbgraph-authorizer.h>
 
 RestProxyCall* gfbgraph_new_rest_call (GFBGraphAuthorizer *authorizer);
+gboolean gfbgraph_upload_file_exists_and_mime_type_check (GFile *file);
+gint gfbgraph_new_multipart_upload_soup_call (GFBGraphAuthorizer *authorizer, GFile *file, GHashTable *params);
+
 
 #endif /* __GFBGRAPH_COMMON_H__ */
