@@ -243,6 +243,31 @@ gfbgraph_test_album (GFBGraphTestFixture *fixture, __attribute__ ((unused)) gcon
         g_assert_cmpstr (gfbgraph_node_get_id (GFBGRAPH_NODE (album)), !=, "");
 }
 
+static void
+gfbgraph_test_upload_photo (GFBGraphTestFixture *fixture, __attribute__ ((unused)) gconstpointer user_data)
+{
+        GFBGraphUser *me;
+        GFBGraphNode *photo;
+        GError *error = NULL;
+        gboolean result = FALSE;
+        const gchar *file_uri = "test-upload-test.jpg";
+
+        me = gfbgraph_user_get_me (GFBGRAPH_AUTHORIZER (fixture->authorizer), &error);
+        g_assert_no_error (error);
+        g_assert (GFBGRAPH_IS_USER (me));
+
+        /* Create a photo from file source */
+        photo = gfbgraph_photo_new_from_file_source (file_uri, "test photo caption");
+        result = gfbgraph_node_append_connection (GFBGRAPH_NODE (me),
+                                                  GFBGRAPH_NODE (photo),
+                                                  GFBGRAPH_AUTHORIZER (fixture->authorizer),
+                                                  &error);
+
+        /* Asserting the connection */
+        g_assert_no_error (error);
+        g_assert (result);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -267,6 +292,13 @@ main (int argc, char **argv)
                     app,
                     gfbgraph_test_fixture_setup,
                     gfbgraph_test_album,
+                    gfbgraph_test_fixture_teardown);
+
+        g_test_add ("/GFBGraph/Photo",
+                    GFBGraphTestFixture,
+                    app,
+                    gfbgraph_test_fixture_setup,
+                    gfbgraph_test_upload_photo,
                     gfbgraph_test_fixture_teardown);
 
         test_result = g_test_run ();
