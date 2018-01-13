@@ -29,6 +29,7 @@
 #include "gfbgraph-photo.h"
 #include "gfbgraph-connectable.h"
 #include "gfbgraph-album.h"
+#include "gfbgraph-user.h"
 
 #include <json-glib/json-glib.h>
 #include <libsoup/soup.h>
@@ -255,6 +256,7 @@ gfbgraph_photo_connectable_iface_init (GFBGraphConnectableInterface *iface)
 
         connections = g_hash_table_new (g_str_hash, g_str_equal);
         g_hash_table_insert (connections, (gpointer) g_type_name (GFBGRAPH_TYPE_ALBUM), (gpointer) "photos");
+        g_hash_table_insert (connections, (gpointer) g_type_name (GFBGRAPH_TYPE_USER), (gpointer) "photos");
 
         iface->connections = connections;
         iface->get_connection_post_params = gfbgraph_photo_get_connection_post_params;
@@ -270,8 +272,9 @@ gfbgraph_photo_get_connection_post_params (GFBGraphConnectable *self, GType node
         priv = GFBGRAPH_PHOTO_GET_PRIVATE (self);
 
         params = g_hash_table_new (g_str_hash, g_str_equal);
-        g_hash_table_insert (params, "message", priv->name);
-        /* TODO: Incorpate the "source" param (multipart/form-data) */
+        g_hash_table_insert (params, "file", priv->source);
+        if (priv->name)
+                g_hash_table_insert (params, "caption", priv->name);
 
         return params;
 }
