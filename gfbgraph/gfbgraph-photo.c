@@ -379,6 +379,23 @@ gfbgraph_photo_new (void)
         return GFBGRAPH_PHOTO(g_object_new(GFBGRAPH_TYPE_PHOTO, NULL));
 }
 
+ /**
+ * gfbgraph_photo_new_from_file_source:
+ * @source: a #GFile uri.
+ * @caption: Caption to be given to the file to be uploaded.
+ * Creates a new #GFBGraphPhoto from #GFile uri which is meant to be uploaded.
+ *
+ * Returns: (transfer full): a new #GFBGraphPhoto from file source; unref with g_object_unref()
+ **/
+GFBGraphPhoto*
+gfbgraph_photo_new_from_file_source (const gchar *source, const gchar *caption)
+{
+        return GFBGRAPH_PHOTO (g_object_new (GFBGRAPH_TYPE_PHOTO, "source", source,
+                                                                  "name", caption,
+                                                                  "multipart_upload", TRUE, NULL));
+}
+
+
 /**
  * gfbgraph_photo_new_from_id:
  * @authorizer: a #GFBGraphAuthorizer.
